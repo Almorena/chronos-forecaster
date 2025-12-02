@@ -158,6 +158,18 @@ MODELLI_DISPONIBILI = {
         "accuratezza": 5,
         "descrizione": "Massima accuratezza, richiede molta RAM",
         "quantili": False
+    },
+    # Chronos-2 (NUOVO! Supporta covariate e multivariate)
+    "amazon/chronos-2": {
+        "nome": "Chronos-2 (NUOVO!)",
+        "tipo": "chronos2",
+        "dimensione": "~500MB",
+        "parametri": "120M",
+        "velocita": 5,
+        "accuratezza": 5,
+        "descrizione": "Ultimo modello! Supporta covariate e multivariate",
+        "quantili": True,
+        "covariate": True
     }
 }
 
@@ -235,10 +247,40 @@ def generate_forecast_t5(pipeline, data, prediction_length, num_samples=20):
         'samples': samples  # Mantieni i campioni originali
     }
 
-def generate_forecast(pipeline, data, prediction_length, model_info, num_samples=20):
+def generate_forecast_chronos2(pipeline, data, prediction_length, covariates=None):
+    """Genera previsioni con Chronos-2 (supporta covariate)"""
+    context = torch.tensor(data.values, dtype=torch.float32).unsqueeze(0)
+
+    if covariates is not None:
+        # Prepara covariate: shape [batch, num_covariates, context_length + prediction_length]
+        cov_tensor = torch.tensor(covariates, dtype=torch.float32).unsqueeze(0)
+        forecast = pipeline.predict(
+            context,
+            prediction_length=prediction_length,
+            covariates=cov_tensor
+        )
+    else:
+        forecast = pipeline.predict(context, prediction_length=prediction_length)
+
+    # Chronos-2 restituisce quantili come Bolt
+    return {
+        'q10': forecast[0, 0, :].cpu().numpy(),
+        'q20': forecast[0, 1, :].cpu().numpy(),
+        'q30': forecast[0, 2, :].cpu().numpy(),
+        'q40': forecast[0, 3, :].cpu().numpy(),
+        'median': forecast[0, 4, :].cpu().numpy(),  # q50
+        'q60': forecast[0, 5, :].cpu().numpy(),
+        'q70': forecast[0, 6, :].cpu().numpy(),
+        'q80': forecast[0, 7, :].cpu().numpy(),
+        'q90': forecast[0, 8, :].cpu().numpy(),
+    }
+
+def generate_forecast(pipeline, data, prediction_length, model_info, num_samples=20, covariates=None):
     """Wrapper che sceglie la funzione corretta in base al tipo di modello"""
     if model_info['tipo'] == 'bolt':
         return generate_forecast_bolt(pipeline, data, prediction_length)
+    elif model_info['tipo'] == 'chronos2':
+        return generate_forecast_chronos2(pipeline, data, prediction_length, covariates)
     else:
         return generate_forecast_t5(pipeline, data, prediction_length, num_samples)
 
@@ -331,10 +373,18 @@ with st.sidebar:
     # Raggruppa modelli per tipo
     modelli_bolt = [k for k, v in MODELLI_DISPONIBILI.items() if v['tipo'] == 'bolt']
     modelli_t5 = [k for k, v in MODELLI_DISPONIBILI.items() if v['tipo'] == 't5']
+    modelli_chronos2 = [k for k, v in MODELLI_DISPONIBILI.items() if v['tipo'] == 'chronos2']
 
-    tipo_modello = st.radio("Famiglia modello:", ["⚡ Bolt (Veloci)", "🎯 T5 (Originali)"])
+    tipo_modello = st.radio("Famiglia modello:", ["🆕 Chronos-2 (NUOVO!)", "⚡ Bolt (Veloci)", "🎯 T5 (Originali)"])
 
-    if "Bolt" in tipo_modello:
+    if "Chronos-2" in tipo_modello:
+        modello_selezionato = st.selectbox(
+            "Modello:",
+            modelli_chronos2,
+            format_func=lambda x: MODELLI_DISPONIBILI[x]['nome']
+        )
+        st.success("✨ Supporta covariate!")
+    elif "Bolt" in tipo_modello:
         modello_selezionato = st.selectbox(
             "Modello:",
             modelli_bolt,
@@ -410,7 +460,8 @@ if pagina == "🏠 Home":
         st.markdown("### 🧠 La tecnologia")
         st.write("""
         Usa **Chronos** di Amazon Science:
-        - **8 modelli** da scegliere
+        - **9 modelli** da scegliere (incluso **Chronos-2**!)
+        - **Covariate support** con Chronos-2
         - **Zero-shot learning** (nessun addestramento richiesto)
         - **Previsioni probabilistiche** con intervalli di confidenza
         - **GPU acceleration** automatico
@@ -528,9 +579,10 @@ elif pagina == "🤖 Modelli":
     st.title("🤖 Confronto Modelli Chronos")
 
     st.markdown("""
-    Chronos offre due famiglie di modelli:
-    - **Bolt**: Fino a 250x più veloci, restituiscono quantili direttamente
-    - **T5**: Modelli originali, generano campioni probabilistici
+    Chronos offre **tre famiglie** di modelli:
+    - **🆕 Chronos-2**: Il più recente! Supporta covariate e previsioni multivariate
+    - **⚡ Bolt**: Fino a 250x più veloci, restituiscono quantili direttamente
+    - **🎯 T5**: Modelli originali, generano campioni probabilistici
     """)
 
     st.divider()
@@ -552,6 +604,34 @@ elif pagina == "🤖 Modelli":
     ])
 
     st.dataframe(df_modelli, use_container_width=True, hide_index=True)
+
+    st.divider()
+
+    # Prima Chronos-2 in evidenza
+    st.markdown("### 🆕 Chronos-2 - Il Modello Più Recente!")
+    st.success("""
+    **Novità assoluta!** Chronos-2 è il modello più avanzato:
+    - **Supporta covariate**: variabili esterne che influenzano le previsioni
+    - **Previsioni multivariate**: prevedi più serie contemporaneamente
+    - **120M parametri**: bilanciato tra velocità e accuratezza
+    - **300+ forecast/secondo**: estremamente veloce
+
+    **Cosa sono le covariate?**
+    Sono variabili aggiuntive che aiutano il modello a fare previsioni migliori.
+    Esempio: per prevedere le vendite, puoi usare come covariate:
+    - Temperature (fa caldo → più gelati venduti)
+    - Festività (Natale → più vendite)
+    - Promozioni (sconto → più vendite)
+    """)
+
+    for key, info in MODELLI_DISPONIBILI.items():
+        if info['tipo'] == 'chronos2':
+            with st.expander(f"🆕 {info['nome']}", expanded=True):
+                st.write(f"**Dimensione:** {info['dimensione']}")
+                st.write(f"**Parametri:** {info['parametri']}")
+                st.write(f"**Descrizione:** {info['descrizione']}")
+                st.write("**Supporta covariate:** ✅")
+                st.code(f"model_name = '{key}'")
 
     st.divider()
 
@@ -1345,13 +1425,12 @@ elif pagina == "❓ FAQ":
 
     with st.expander("🔄 Posso prevedere più variabili insieme?"):
         st.write("""
-        Attualmente questa dashboard supporta una variabile alla volta
-        (univariato).
+        **SÌ!** Con **Chronos-2** puoi:
+        - Usare **covariate**: variabili esterne che influenzano la previsione
+        - Fare previsioni **multivariate**: più serie temporali insieme
 
-        Per previsioni multivariate, puoi:
-        1. Fare previsioni separate per ogni variabile
-        2. Usare l'API e combinarle nel tuo codice
-        3. Aspettare Chronos-2 che supporterà multivariate
+        Per i modelli Bolt e T5, supportiamo una variabile alla volta (univariato).
+        Se hai bisogno di covariate, seleziona **Chronos-2** dalla sidebar!
         """)
 
     with st.expander("💾 In che formato posso esportare?"):

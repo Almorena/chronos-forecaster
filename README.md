@@ -8,7 +8,8 @@ Prova l'app: [chronos-forecaster.streamlit.app](https://chronos-forecaster.strea
 
 ## Caratteristiche
 
-- **8 modelli AI** disponibili (Bolt e T5)
+- **9 modelli AI** disponibili (Chronos-2, Bolt e T5)
+- **Supporto Covariate** con Chronos-2 (variabili esterne)
 - **Zero-shot learning** - funziona senza addestramento
 - **Previsioni probabilistiche** con intervalli di confidenza
 - **GPU support** automatico (CUDA, Apple MPS)
@@ -17,16 +18,17 @@ Prova l'app: [chronos-forecaster.streamlit.app](https://chronos-forecaster.strea
 
 ## Modelli Disponibili
 
-| Famiglia | Modello | Parametri | Velocita |
-|----------|---------|-----------|----------|
-| Bolt | bolt-mini | 9M | Velocissimo |
-| Bolt | bolt-small | 48M | Veloce |
-| Bolt | bolt-base | 205M | Medio |
-| T5 | t5-tiny | 8M | Medio |
-| T5 | t5-mini | 20M | Lento |
-| T5 | t5-small | 46M | Lento |
-| T5 | t5-base | 200M | Molto lento |
-| T5 | t5-large | 710M | Molto lento |
+| Famiglia | Modello | Parametri | Velocita | Covariate |
+|----------|---------|-----------|----------|-----------|
+| **Chronos-2** | chronos-2 | 120M | Velocissimo | ✅ SI |
+| Bolt | bolt-mini | 9M | Velocissimo | ❌ |
+| Bolt | bolt-small | 48M | Veloce | ❌ |
+| Bolt | bolt-base | 205M | Medio | ❌ |
+| T5 | t5-tiny | 8M | Medio | ❌ |
+| T5 | t5-mini | 20M | Lento | ❌ |
+| T5 | t5-small | 46M | Lento | ❌ |
+| T5 | t5-base | 200M | Molto lento | ❌ |
+| T5 | t5-large | 710M | Molto lento | ❌ |
 
 ## Installazione Locale
 
