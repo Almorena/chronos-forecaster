@@ -1036,6 +1036,49 @@ data,valore
             else:
                 num_samples = 20
 
+        # Sezione Covariate per Chronos-2
+        covariates_data = None
+        if info_mod.get('covariate', False):
+            st.divider()
+            st.markdown("### 🔬 Covariate (Opzionale)")
+            st.info("""
+            **Cosa sono le covariate?** Sono variabili esterne che influenzano le previsioni.
+
+            Esempio: per prevedere vendite puoi usare temperatura, festività, promozioni.
+
+            **Formato richiesto:** CSV con colonne numeriche. Deve avere righe per:
+            - Tutto il periodo storico (stesso numero di righe dei dati principali)
+            - PIÙ i periodi futuri che vuoi prevedere
+            """)
+
+            usa_covariate = st.checkbox("Usa covariate per migliorare le previsioni")
+
+            if usa_covariate:
+                cov_file = st.file_uploader(
+                    "Carica file covariate (CSV)",
+                    type=['csv'],
+                    key='covariate_upload',
+                    help="CSV con variabili esterne. Righe = periodo storico + previsione"
+                )
+
+                if cov_file is not None:
+                    try:
+                        df_cov = pd.read_csv(cov_file)
+                        # Mostra anteprima
+                        st.write(f"**Covariate caricate:** {len(df_cov)} righe, {len(df_cov.columns)} variabili")
+                        st.dataframe(df_cov.head(), use_container_width=True)
+
+                        # Verifica lunghezza
+                        expected_len = len(df) + periodi_previsione
+                        if len(df_cov) != expected_len:
+                            st.warning(f"⚠️ Le covariate hanno {len(df_cov)} righe, ma ne servono {expected_len} (storico + previsione)")
+                        else:
+                            st.success(f"✅ Lunghezza corretta: {len(df_cov)} righe")
+                            # Prepara covariate come array numpy
+                            covariates_data = df_cov.select_dtypes(include=[np.number]).values.T  # Transpose per avere [n_cov, length]
+                    except Exception as e:
+                        st.error(f"Errore nel caricamento covariate: {e}")
+
         st.divider()
 
         # Step 4: Genera previsioni
@@ -1064,7 +1107,8 @@ data,valore
                 df[colonna_valore],
                 periodi_previsione,
                 info_mod,
-                num_samples
+                num_samples,
+                covariates=covariates_data
             )
             elapsed = time.time() - start_time
 
