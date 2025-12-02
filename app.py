@@ -1041,17 +1041,87 @@ data,valore
         if info_mod.get('covariate', False):
             st.divider()
             st.markdown("### 🔬 Covariate (Opzionale)")
+
+            # Info box principale
             st.info("""
-            **Cosa sono le covariate?** Sono variabili esterne che influenzano le previsioni.
-
-            Esempio: per prevedere vendite puoi usare temperatura, festività, promozioni.
-
-            **Formato richiesto:** CSV con colonne numeriche. Deve avere righe per:
-            - Tutto il periodo storico (stesso numero di righe dei dati principali)
-            - PIÙ i periodi futuri che vuoi prevedere
+            **Le covariate** sono variabili esterne che possono migliorare le tue previsioni.
+            Chronos-2 è l'unico modello che le supporta!
             """)
 
-            usa_covariate = st.checkbox("Usa covariate per migliorare le previsioni")
+            # Expander con guida dettagliata
+            with st.expander("📚 **Guida Completa alle Covariate** - Clicca per espandere", expanded=False):
+                st.markdown("""
+                ## Cosa sono le Covariate?
+
+                Le covariate (o **variabili esogene**) sono fattori esterni che influenzano
+                la serie temporale che vuoi prevedere. Includendole, il modello può fare
+                previsioni più accurate.
+
+                ---
+
+                ## 📊 Esempi Pratici
+
+                | Previsione | Covariate Utili |
+                |------------|-----------------|
+                | **Vendite** | Temperatura, festività, promozioni, prezzo |
+                | **Consumi energetici** | Temperatura, giorno settimana, ore di luce |
+                | **Traffico web** | Campagne marketing, eventi, weekend |
+                | **Domanda prodotti** | Stagionalità, prezzo competitor, stock |
+                | **Work stress** | Deadline, festività, carico lavoro team |
+
+                ---
+
+                ## 📁 Formato del File CSV
+
+                Il file covariate deve essere un **CSV con colonne numeriche**:
+
+                ```
+                temperatura,promozione,festivo
+                22.5,0,0
+                23.1,1,0
+                21.8,0,1
+                ...
+                ```
+
+                **Regole importanti:**
+                1. **Nessuna colonna data** - solo valori numerici
+                2. **Righe = Storico + Futuro** - deve coprire sia i dati passati che i periodi da prevedere
+                3. **Stesso ordine temporale** - le righe devono seguire lo stesso ordine dei dati principali
+
+                ---
+
+                ## 📏 Calcolo Lunghezza Richiesta
+
+                ```
+                Lunghezza covariate = Righe dati storici + Periodi da prevedere
+                ```
+
+                **Esempio:**
+                - Hai 100 settimane di dati storici
+                - Vuoi prevedere 12 settimane future
+                - **File covariate deve avere 112 righe**
+
+                ---
+
+                ## ✅ Best Practices
+
+                1. **Scegli covariate rilevanti** - variabili che davvero influenzano il fenomeno
+                2. **Normalizza se necessario** - valori simili come scala aiutano il modello
+                3. **Covariate future note** - devi conoscere i valori futuri (es. calendario festività)
+                4. **Non esagerare** - 2-5 covariate ben scelte sono meglio di 20 rumorose
+
+                ---
+
+                ## ⚠️ Quando NON usare covariate
+
+                - Non hai variabili esterne rilevanti
+                - Non conosci i valori futuri delle covariate
+                - La serie temporale è già molto regolare e prevedibile
+                """)
+
+            st.markdown("---")
+
+            usa_covariate = st.checkbox("✅ Usa covariate per migliorare le previsioni")
 
             if usa_covariate:
                 cov_file = st.file_uploader(
