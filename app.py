@@ -249,22 +249,36 @@ def generate_forecast_t5(pipeline, data, prediction_length, num_samples=20):
 
 def generate_forecast_chronos2(pipeline, data, prediction_length, covariates=None):
     """Genera previsioni con Chronos-2 (supporta covariate)"""
-    # Chronos-2 richiede shape 3D: (n_series, n_variates, history_length)
-    context = torch.tensor(data.values, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
 
     if covariates is not None:
-        # Prepara covariate: shape [batch, num_covariates, context_length + prediction_length]
-        cov_tensor = torch.tensor(covariates, dtype=torch.float32).unsqueeze(0)
-        forecast = pipeline.predict(
-            context,
-            prediction_length=prediction_length,
-            covariates=cov_tensor
-        )
+        # Chronos-2 richiede input come lista di dizionari per le covariate
+        # covariates shape: [n_covariates, history_length + prediction_length]
+        history_length = len(data)
+
+        # Prepara dizionari per past_covariates e future_covariates
+        past_cov_dict = {}
+        future_cov_dict = {}
+
+        for i in range(covariates.shape[0]):
+            cov_name = f"cov_{i}"
+            past_cov_dict[cov_name] = covariates[i, :history_length]
+            future_cov_dict[cov_name] = covariates[i, history_length:history_length + prediction_length]
+
+        # Crea input come lista di dizionari
+        inputs = [{
+            "target": data.values,
+            "past_covariates": past_cov_dict,
+            "future_covariates": future_cov_dict
+        }]
+
+        forecast = pipeline.predict(inputs, prediction_length=prediction_length)
     else:
+        # Senza covariate: input come tensor 3D
+        context = torch.tensor(data.values, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
         forecast = pipeline.predict(context, prediction_length=prediction_length)
 
-    # Chronos-2 restituisce quantili - shape potrebbe essere diversa
-    # Estrai prima serie, prima variabile
+    # Chronos-2 restituisce lista di tensori con quantili
+    # Shape: (n_variates, n_quantiles, prediction_length)
     forecast_data = forecast[0]  # Prima serie
 
     # Se ha dimensione extra per variabili, prendi la prima
