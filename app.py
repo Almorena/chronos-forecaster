@@ -249,7 +249,8 @@ def generate_forecast_t5(pipeline, data, prediction_length, num_samples=20):
 
 def generate_forecast_chronos2(pipeline, data, prediction_length, covariates=None):
     """Genera previsioni con Chronos-2 (supporta covariate)"""
-    context = torch.tensor(data.values, dtype=torch.float32).unsqueeze(0)
+    # Chronos-2 richiede shape 3D: (n_series, n_variates, history_length)
+    context = torch.tensor(data.values, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
 
     if covariates is not None:
         # Prepara covariate: shape [batch, num_covariates, context_length + prediction_length]
@@ -262,17 +263,24 @@ def generate_forecast_chronos2(pipeline, data, prediction_length, covariates=Non
     else:
         forecast = pipeline.predict(context, prediction_length=prediction_length)
 
-    # Chronos-2 restituisce quantili come Bolt
+    # Chronos-2 restituisce quantili - shape potrebbe essere diversa
+    # Estrai prima serie, prima variabile
+    forecast_data = forecast[0]  # Prima serie
+
+    # Se ha dimensione extra per variabili, prendi la prima
+    if len(forecast_data.shape) == 3:
+        forecast_data = forecast_data[0]  # Prima variabile
+
     return {
-        'q10': forecast[0, 0, :].cpu().numpy(),
-        'q20': forecast[0, 1, :].cpu().numpy(),
-        'q30': forecast[0, 2, :].cpu().numpy(),
-        'q40': forecast[0, 3, :].cpu().numpy(),
-        'median': forecast[0, 4, :].cpu().numpy(),  # q50
-        'q60': forecast[0, 5, :].cpu().numpy(),
-        'q70': forecast[0, 6, :].cpu().numpy(),
-        'q80': forecast[0, 7, :].cpu().numpy(),
-        'q90': forecast[0, 8, :].cpu().numpy(),
+        'q10': forecast_data[0, :].cpu().numpy(),
+        'q20': forecast_data[1, :].cpu().numpy(),
+        'q30': forecast_data[2, :].cpu().numpy(),
+        'q40': forecast_data[3, :].cpu().numpy(),
+        'median': forecast_data[4, :].cpu().numpy(),  # q50
+        'q60': forecast_data[5, :].cpu().numpy(),
+        'q70': forecast_data[6, :].cpu().numpy(),
+        'q80': forecast_data[7, :].cpu().numpy(),
+        'q90': forecast_data[8, :].cpu().numpy(),
     }
 
 def generate_forecast(pipeline, data, prediction_length, model_info, num_samples=20, covariates=None):
@@ -1143,8 +1151,8 @@ data,valore
                 name=f'📏 Intervallo {intervallo}'
             ))
 
-            # Linea verticale "oggi"
-            fig.add_vline(x=last_date, line_dash="dash", line_color="gray", annotation_text="Oggi")
+            # Linea verticale "oggi" (senza annotazione per compatibilità)
+            fig.add_vline(x=last_date.to_pydatetime(), line_dash="dash", line_color="gray")
 
             fig.update_layout(
                 title=f"Previsione {col_val.title()} - Prossimi {periodi} periodi",
